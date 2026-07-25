@@ -4,8 +4,8 @@ services:
     build:
       context: .
       tags:
-        - "local/ss-zapret2:v1.0.2"
-    image: local/ss-zapret2:v1.0.2
+        - "local/ss-zapret2:v1.0.3"
+    image: local/ss-zapret2:v1.0.3
     container_name: zapret2-proxy
     restart: unless-stopped
     environment:
