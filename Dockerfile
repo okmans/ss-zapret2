@@ -39,8 +39,9 @@ RUN <<EOT
   esac
 EOT
 
-RUN wget -qO- "https://github.com/bol-van/zapret2/releases/download/${ZAPRET_TAG}/zapret2-${ZAPRET_TAG}.tar.gz" | tar xz && \
-    mv zapret2-* ${ZAPRET_SRC}
+RUN wget -qO- "https://github.com/bol-van/zapret2/releases/download/${ZAPRET_TAG}/zapret2-${ZAPRET_TAG}.tar.gz" \
+    | tar -xzf - -C /opt
+RUN mv zapret2-${ZAPRET_TAG} ${ZAPRET_SRC}
 
 WORKDIR ${ZAPRET_BUILD}
 
