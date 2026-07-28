@@ -1,48 +1,88 @@
+x-templ-zapret2: &zapret2
+  pull_policy: missing
+  build:
+   context: .
+   tags:
+     - "local/ss-zapret2:v1.0.3"
+  image: local/ss-zapret2:v1.0.3
+  restart: unless-stopped
+  environment: &env
+    SOCKS_PORT: ${SOCKS_PORT}
+    SS_PORT: ${SS_PORT}
+    SS_PASSWORD: ${SS_PASSWORD}
+    SS_ENCRYPT_METHOD: ${SS_ENCRYPT_METHOD}
+    SS_TIMEOUT: ${SS_TIMEOUT}
+    SS_VERBOSE: ${SS_VERBOSE:-0}
+  healthcheck: &health
+    test: [
+      "CMD-SHELL",
+      "nc -z localhost ${SS_PORT} && nc -z localhost ${SOCKS_PORT} || exit 1"
+    ]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 3s
+  cap_add:
+    - NET_ADMIN
+  ulimits:
+    nofile:
+      soft: 65536
+      hard: 65536
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
-  ss-zapret2:
-    pull_policy: build
-    build:
-      context: .
-      tags:
-        - "local/ss-zapret2:v1.0.3"
-    image: local/ss-zapret2:v1.0.3
+  ss-zapret2-proxy:
+    <<: *zapret2
     container_name: zapret2-proxy
-    restart: unless-stopped
     environment:
-      - SS_PORT=${SS_PORT}
-      - SS_PASSWORD=${SS_PASSWORD}
-      - SS_ENCRYPT_METHOD=${SS_ENCRYPT_METHOD}
-      - SS_TIMEOUT=${SS_TIMEOUT}
-      - SOCKS_PORT=${SOCKS_PORT}
-      - SS_VERBOSE=${SS_VERBOSE:-0}
+      <<: *env
+      SOCKS_PORT: 1080
+      SS_PORT: 8388
     ports:
-      - "127.0.0.1:${SS_PORT}:${SS_PORT}/tcp"
-      - "127.0.0.1:${SS_PORT}:${SS_PORT}/udp"
-      - "127.0.0.1:${SOCKS_PORT}:${SOCKS_PORT}/tcp"
-      - "127.0.0.1:${SOCKS_PORT}:${SOCKS_PORT}/udp"
+      - "${HOST_ADDR}:8388:8388/tcp"
+      - "${HOST_ADDR}:8388:8388/udp"
+      - "${HOST_ADDR}:1080:1080/tcp"
+      - "${HOST_ADDR}:1080:1080/udp"
     volumes:
       - ./config:/opt/zapret2/config
       - ./lua:/opt/zapret2/lua
-      - ./fakes:/opt/zapret2/files/fake
       - ./scripts/examples:/opt/zapret2/init.d/custom.d.examples.linux
       - ./scripts/custom.d:/opt/zapret2/init.d/sysv/custom.d
+      - ./fakes-proxy:/opt/zapret2/files/fake
+      - ./output-proxy:/opt/zapret2/files/out
     healthcheck:
+      <<: *health
       test: [
         "CMD-SHELL",
-        "nc -z localhost ${SS_PORT} && nc -z localhost ${SOCKS_PORT} || exit 1"
+        "nc -z localhost 8388 && nc -z localhost 1080 || exit 1"
       ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 3s
-    cap_add:
-      - NET_ADMIN
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+
+#  ss-zapret2-blockcheck:
+#    <<: *zapret2
+#    container_name: zapret2-blockcheck
+#    environment:
+#      <<: *env
+#      SOCKS_PORT: 1180
+#      SS_PORT: 8488
+#    ports:
+#      - "127.0.0.1:8488:8488/tcp"
+#      - "127.0.0.1:8488:8488/udp"
+#      - "127.0.0.1:1180:1180/tcp"
+#      - "127.0.0.1:1180:1180/udp"
+#    volumes:
+#      - ./config:/opt/zapret2/config
+#      - ./lua:/opt/zapret2/lua
+#      - ./scripts/examples:/opt/zapret2/init.d/custom.d.examples.linux
+#      - ./scripts/custom.d:/opt/zapret2/init.d/sysv/custom.d
+#      - ./fakes-blockcheck:/opt/zapret2/files/fake
+#      - ./output-blockcheck:/opt/zapret2/files/out
+#    healthcheck:
+#      <<: *health
+#      test: [
+#        "CMD-SHELL",
+#        "nc -z localhost 8488 && nc -z localhost 1180 || exit 1"
+#      ]
